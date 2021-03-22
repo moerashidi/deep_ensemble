@@ -63,74 +63,74 @@ def train_resnet(
 
     global_steps = 0
     best_acc = 0
-    for epoch in range(1, num_epochs):
+    for epoch in range(num_epochs):
         net.train()
 
         train_loss = 0
         correct = 0
         total = 0
 
-    for batch_idx, (inputs, targets) in tqdm(enumerate(train_loader), total=len(train_loader)):
-        global_steps += 1
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        step_lr_scheduler.step()
-
-
-        train_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
-		
-    acc = 100 * correct / total
-    print(
-        f'''
-        train epoch : {epoch} |
-        loss: {train_loss/(batch_idx+1):.3f} |
-        acc: {acc:.3f}'''
-    )
-
-    net.eval()
-    test_loss = 0
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for batch_idx, (inputs, targets) in tqdm(enumerate(test_loader), total=len(test_loader)):
+        for batch_idx, (inputs, targets) in tqdm(enumerate(train_loader), total=len(train_loader)):
+            global_steps += 1
             inputs = inputs.to(device)
             targets = targets.to(device)
             outputs = net(inputs)
             loss = criterion(outputs, targets)
 
-            test_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            step_lr_scheduler.step()
+
+
+            train_loss += loss.item()
             _, predicted = outputs.max(1)
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
-	
-    acc = 100 * correct / total
-    print(
-        f'''
-        test epoch : {epoch} |
-        loss: {train_loss/(batch_idx+1):.3f} |
-        acc: {acc:.3f}'''
-    )
 
-    with open(f'{log_dir}/log.txt', 'a') as f:
-        f.write(f'{epoch} \t {acc} \t {test_loss/(batch_idx+1)}\n')
+        acc = 100 * correct / total
+        print(
+            f'''
+            train epoch : {epoch} |
+            loss: {train_loss/(batch_idx+1):.3f} |
+            acc: {acc:.3f}'''
+        )
 
-    if save_checkpoint:
-        model_path=f'{model_save_dir}/ckpt_epoch_{epoch}.pth'
-        torch.save(net.state_dict(), model_path)
+        net.eval()
+        test_loss = 0
+        correct = 0
+        total = 0
 
-    if acc > best_acc:
-        best_acc = acc
-        model_path=f'{model_save_dir}/best_model.pth'
-        torch.save(net.state_dict(), model_path)
+        with torch.no_grad():
+            for batch_idx, (inputs, targets) in tqdm(enumerate(test_loader), total=len(test_loader)):
+                inputs = inputs.to(device)
+                targets = targets.to(device)
+                outputs = net(inputs)
+                loss = criterion(outputs, targets)
 
-    print('best test accuracy is ', best_acc)
+                test_loss += loss.item()
+                _, predicted = outputs.max(1)
+                total += targets.size(0)
+                correct += predicted.eq(targets).sum().item()
+
+        acc = 100 * correct / total
+        print(
+            f'''
+            test epoch : {epoch} |
+            loss: {train_loss/(batch_idx+1):.3f} |
+            acc: {acc:.3f}'''
+        )
+
+        with open(f'{log_dir}/log.txt', 'a') as f:
+            f.write(f'{epoch} \t {acc} \t {test_loss/(batch_idx+1)}\n')
+
+        if save_checkpoint:
+            model_path=f'{model_save_dir}/ckpt_epoch_{epoch}.pth'
+            torch.save(net.state_dict(), model_path)
+
+        if acc > best_acc:
+            best_acc = acc
+            model_path=f'{model_save_dir}/best_model.pth'
+            torch.save(net.state_dict(), model_path)
+
+        print('best test accuracy is ', best_acc)
