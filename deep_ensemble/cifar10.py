@@ -2,7 +2,7 @@ import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 
-from deep_ensemble.train_resnet import train_resnet
+from deep_ensemble.train import train
 
 
 
@@ -36,9 +36,10 @@ test_dataset = CIFAR10(
     transform=transforms_test
 )
 
-def train_cifar10_resnet(
+def train_cifar10(
         model_save_dir,
         log_dir,
+        model,
         train_dataset=train_dataset,
         test_dataset=test_dataset,
         train_frac=1,
@@ -60,11 +61,12 @@ def train_cifar10_resnet(
         [train_len, remain_len]
     )
     
-    train_resnet(
+    train(
         train_dataset=train_dataset,
         test_dataset=test_dataset,
         model_save_dir=model_save_dir,
         log_dir=log_dir,
+        model=model,
         num_epochs=num_epochs,
         train_batch_size=train_batch_size,
         test_batch_size=test_batch_size,

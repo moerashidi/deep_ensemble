@@ -6,14 +6,14 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from deep_ensemble.models import resnet
 
 
-def train_resnet(
+def train(
         train_dataset,
         test_dataset,
         model_save_dir,
         log_dir,
+        model,
         num_epochs=300,
         train_batch_size=256,
         test_batch_size=256,
@@ -44,7 +44,7 @@ def train_resnet(
     )
 
 
-    net = resnet().to(device)
+    net = model.to(device)
     num_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
     print('The number of parameters of model is', num_params)
 
