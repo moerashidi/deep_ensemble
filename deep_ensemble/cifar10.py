@@ -1,3 +1,4 @@
+import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 
@@ -40,6 +41,7 @@ def train_cifar10_resnet(
         log_dir,
         train_dataset=train_dataset,
         test_dataset=test_dataset,
+        train_frac=1,
         num_epochs=300,
         train_batch_size=256,
         test_batch_size=256,
@@ -48,7 +50,16 @@ def train_cifar10_resnet(
         lr=0.1, 
 	    momentum=0.9,
         weight_decay=1e-4,
+        seed=10,
     ):
+    train_len=int(train_frac * len(train_dataset))
+    remain_len = len(train_dataset) - train_len
+    torch.manual_seed(seed)
+    train_dataset, _ = torch.utils.data.random_split(
+        train_dataset,
+        [train_len, remain_len]
+    )
+    
     train_resnet(
         train_dataset=train_dataset,
         test_dataset=test_dataset,
