@@ -70,7 +70,7 @@ def train(
         correct = 0
         total = 0
 
-        for batch_idx, (inputs, targets) in tqdm(enumerate(train_loader), total=len(train_loader)):
+        for batch_idx_train, (inputs, targets) in tqdm(enumerate(train_loader), total=len(train_loader)):
             global_steps += 1
             inputs = inputs.to(device)
             targets = targets.to(device)
@@ -88,12 +88,12 @@ def train(
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-        acc = 100 * correct / total
+        train_acc = 100 * correct / total
         print(
             f'''
             train epoch : {epoch} |
-            loss: {train_loss/(batch_idx+1):.3f} |
-            acc: {acc:.3f}'''
+            loss: {train_loss/(batch_idx_train+1):.3f} |
+            train_acc: {train_acc:.3f}'''
         )
 
         net.eval()
@@ -102,7 +102,7 @@ def train(
         total = 0
 
         with torch.no_grad():
-            for batch_idx, (inputs, targets) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            for batch_idx_test, (inputs, targets) in tqdm(enumerate(test_loader), total=len(test_loader)):
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 outputs = net(inputs)
@@ -113,16 +113,18 @@ def train(
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
 
-        acc = 100 * correct / total
+        test_acc = 100 * correct / total
         print(
             f'''
             test epoch : {epoch} |
-            loss: {train_loss/(batch_idx+1):.3f} |
-            acc: {acc:.3f}'''
+            loss: {train_loss/(batch_idx_test+1):.3f} |
+            test_acc: {test_acc:.3f}'''
         )
 
         with open(f'{log_dir}/log.txt', 'a') as f:
-            f.write(f'{epoch} \t {acc} \t {test_loss/(batch_idx+1)}\n')
+            f.write(
+                f'{epoch}\t{train_acc}\t{train_loss/(batch_idx_train+1)}\t{test_acc} \t {test_loss/(batch_idx_test+1)}\n'
+            )
 
         if save_checkpoint:
             model_path=f'{model_save_dir}/ckpt_epoch_{epoch}.pth'
