@@ -130,8 +130,8 @@ def train(
             model_path=f'{model_save_dir}/ckpt_epoch_{epoch}.pth'
             torch.save(net.state_dict(), model_path)
 
-        if acc > best_acc:
-            best_acc = acc
+        if test_acc > best_acc:
+            best_acc = test_acc
             model_path=f'{model_save_dir}/best_model.pth'
             torch.save(net.state_dict(), model_path)
 
