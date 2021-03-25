@@ -1,6 +1,12 @@
+import os
+
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 
 def loss_fn_kd(
@@ -10,15 +16,11 @@ def loss_fn_kd(
         temperature,
         alpha,
     ):
-    alpha = alpha
     T = temperature
     KD_loss = nn.KLDivLoss()(
         F.log_softmax(outputs/T, dim=1),
-        F.softmax(teacher_outputs/T, dim=1),
-    ) * (alpha * T * T) + F.cross_entropy(
-            outputs,
-            labels,
-        ) * (1. - alpha)
+        F.softmax(teacher_outputs/T, dim=1)
+        ) * (alpha * T * T) + F.cross_entropy(outputs, labels) * (1. - alpha)
 
     return KD_loss
 
@@ -69,7 +71,7 @@ def train_kd(
     print('The number of parameters of model is', num_params)
     
     optimizer = optim.SGD(
-        net.parameters(),
+        model.parameters(),
         lr=lr, 
 	    momentum=momentum,
         weight_decay=weight_decay
@@ -139,6 +141,7 @@ def train_kd(
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 outputs = model(inputs)
+                teacher_outputs = teacher_model(inputs)
                 loss = loss_fn_kd(
                     outputs,
                     targets,
@@ -167,11 +170,11 @@ def train_kd(
 
         if save_checkpoint:
             model_path=f'{model_save_dir}/ckpt_epoch_{epoch}.pth'
-            torch.save(net.state_dict(), model_path)
+            torch.save(model.state_dict(), model_path)
 
         if test_acc > best_acc:
             best_acc = test_acc
             model_path=f'{model_save_dir}/best_model.pth'
-            torch.save(net.state_dict(), model_path)
+            torch.save(model.state_dict(), model_path)
 
         print('best test accuracy is ', best_acc)
