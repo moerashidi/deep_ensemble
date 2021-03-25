@@ -1,19 +1,35 @@
-import os
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader
-from tqdm import tqdm
+from torch import nn
+import torch.nn.functional as F
 
 
+def loss_fn_kd(
+        outputs,
+        labels,
+        teacher_outputs,
+        temperature,
+        alpha,
+    ):
+    alpha = alpha
+    T = temperature
+    KD_loss = nn.KLDivLoss()(
+        F.log_softmax(outputs/T, dim=1),
+        F.softmax(teacher_outputs/T, dim=1),
+    ) * (alpha * T * T) + F.cross_entropy(
+            outputs,
+            labels,
+        ) * (1. - alpha)
 
-def train(
+    return KD_loss
+
+
+def train_kd(
         train_dataset,
         test_dataset,
         model_save_dir,
         log_dir,
         model,
+        teacher_model,
         num_epochs=300,
         train_batch_size=256,
         test_batch_size=256,
@@ -22,7 +38,10 @@ def train(
         lr=0.1, 
 	    momentum=0.9,
         weight_decay=1e-4,
+        temperature=3,
+        alpha=0.9
     ):
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if not os.path.exists(model_save_dir):
@@ -34,7 +53,7 @@ def train(
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=train_batch_size,
+        batch_size=train_batch_size, 
         shuffle=True
     )
     test_loader = DataLoader(
@@ -42,13 +61,13 @@ def train(
         batch_size=test_batch_size, 
         shuffle=False
     )
-
-
-    net = model.to(device)
-    num_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    model = model.to(device)
+    teacher_model = teacher_model.to(device)
+    num_params = sum(
+        p.numel() for p in model.parameters() if p.requires_grad
+    )
     print('The number of parameters of model is', num_params)
-
-    criterion = nn.CrossEntropyLoss()
+    
     optimizer = optim.SGD(
         net.parameters(),
         lr=lr, 
@@ -60,29 +79,41 @@ def train(
     milestones=[epoch * train_batch_size for epoch in decay_epoch],
     gamma=0.1
     )
+    
+    teacher_model.eval()
 
     global_steps = 0
     best_acc = 0
     for epoch in range(num_epochs):
-        net.train()
+        model.train()
 
         train_loss = 0
         correct = 0
         total = 0
-
-        for batch_idx_train, (inputs, targets) in tqdm(enumerate(train_loader), total=len(train_loader)):
+        
+        for batch_idx_train, (inputs, targets) in tqdm(
+                enumerate(train_loader),
+                total=len(train_loader)
+            ):
             global_steps += 1
             inputs = inputs.to(device)
             targets = targets.to(device)
-            outputs = net(inputs)
-            loss = criterion(outputs, targets)
+            outputs = model(inputs)
+            with torch.no_grad():
+                teacher_outputs = teacher_model(inputs)
+            loss = loss_fn_kd(
+                outputs,
+                targets,
+                teacher_outputs,
+                temperature,
+                alpha
+            )
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             step_lr_scheduler.step()
-
-
+            
             train_loss += loss.item()
             _, predicted = outputs.max(1)
             total += targets.size(0)
@@ -95,18 +126,26 @@ def train(
             loss: {train_loss/(batch_idx_train+1):.3f} |
             train_acc: {train_acc:.3f}'''
         )
-
-        net.eval()
+        
+        model.eval()
         test_loss = 0
         correct = 0
         total = 0
-
+        
         with torch.no_grad():
-            for batch_idx_test, (inputs, targets) in tqdm(enumerate(test_loader), total=len(test_loader)):
+            for batch_idx_test, (inputs, targets) in tqdm(
+                    enumerate(test_loader), total=len(test_loader)
+                ):
                 inputs = inputs.to(device)
                 targets = targets.to(device)
-                outputs = net(inputs)
-                loss = criterion(outputs, targets)
+                outputs = model(inputs)
+                loss = loss_fn_kd(
+                    outputs,
+                    targets,
+                    teacher_outputs,
+                    temperature,
+                    alpha
+                )
 
                 test_loss += loss.item()
                 _, predicted = outputs.max(1)

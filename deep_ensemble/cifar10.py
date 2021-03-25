@@ -3,6 +3,7 @@ import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 
 from deep_ensemble.train import train
+from deep_ensemble.train_kd import train_kd
 
 
 
@@ -42,6 +43,8 @@ def train_cifar10(
         model,
         train_dataset=train_dataset,
         test_dataset=test_dataset,
+        train_type='single',
+        teacher_model=None,
         train_frac=1,
         num_epochs=300,
         train_batch_size=256,
@@ -51,6 +54,8 @@ def train_cifar10(
         lr=0.1, 
 	    momentum=0.9,
         weight_decay=1e-4,
+        temperature=3,
+        alpha=0.9,
         seed=10,
     ):
     train_len=int(train_frac * len(train_dataset))
@@ -60,19 +65,39 @@ def train_cifar10(
         train_dataset,
         [train_len, remain_len]
     )
-    
-    train(
-        train_dataset=train_dataset,
-        test_dataset=test_dataset,
-        model_save_dir=model_save_dir,
-        log_dir=log_dir,
-        model=model,
-        num_epochs=num_epochs,
-        train_batch_size=train_batch_size,
-        test_batch_size=test_batch_size,
-        decay_epoch=decay_epoch,
-        save_checkpoint=save_checkpoint,
-        lr=lr, 
-	    momentum=momentum,
-        weight_decay=weight_decay,
-    )
+    if train_type == 'single':
+        train(
+            train_dataset=train_dataset,
+            test_dataset=test_dataset,
+            model_save_dir=model_save_dir,
+            log_dir=log_dir,
+            model=model,
+            num_epochs=num_epochs,
+            train_batch_size=train_batch_size,
+            test_batch_size=test_batch_size,
+            decay_epoch=decay_epoch,
+            save_checkpoint=save_checkpoint,
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+        )
+    elif train_type == 'kd':
+
+        train_kd(
+            train_dataset=train_dataset,
+            test_dataset=test_dataset,
+            model_save_dir=model_save_dir,
+            log_dir=log_dir,
+            model=model,
+            teacher_model=teacher_model,
+            num_epochs=num_epochs,
+            train_batch_size=train_batch_size,
+            test_batch_size=test_batch_size,
+            decay_epoch=decay_epoch,
+            save_checkpoint=save_checkpoint,
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            temperature=temperature,
+            alpha=alpha,
+        )
